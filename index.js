@@ -1,84 +1,83 @@
 const express = require('express');
-var cors = require('cors')
-const app = express();
-const port =5000;
+const { MongoClient } = require('mongodb');
+const cors = require('cors');
+const ObjectId = require('mongodb').ObjectId;
 
 
 
-app.use(cors())
+const app =express();
+const port = 5000;
+
+// Middleware
+app.use(cors());
 app.use(express.json());
 
 
-app.get('/',(req,res) =>{
-    res.send('asfsdafaskdfdasfds with node mon automatic restart');
-})
+//user: mydbuser1
+//pass: 4e6s4AESRCwYvdcM
+//IP :103.120.162.238
 
-const users =[
-    {
-        id:0, 
-        name:'Mahadi Hasan',
-        email:'mahadi@gmail.com',
-        phone:'01924224778'
-    },
-    {
-        id:1, 
-        name:'Nishanul Habib',
-        email:'nishanul@gmail.com',
-        phone:'01924224778'
-    },
-    {
-        id:2, 
-        name:'Muhaiminul Habib',
-        email:'muhaiminul@gmail.com',
-        phone:'01924224778'
-    },
-    {
-        id:3, 
-        name:'Taima Tabassum',
-        email:'taima@gmail.com',
-        phone:'01924224778'
+const uri = "mongodb+srv://mydbuser1:4e6s4AESRCwYvdcM@cluster0.h1bkr.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+
+async function run() {
+    try {
+      await client.connect();
+
+      //DATABASE NAME ard TABLE NAME
+      const database = client.db("insertDB");
+      const usersCollection = database.collection("users");
+      // create a document to insert
+
+      // GET API
+      app.get('/users', async (req, res) => {
+          const cursor = usersCollection.find({});
+          const users = await cursor.toArray();
+          res.send(users);
+      });
+
+      app.get('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const users =  await usersCollection.findOne(query);
+            console.log('load user with id: ', id);
+            res.send(users);
+      })
+
+
+     //POST API
+     app.post('/users', async (req, res) => {
+       const newUser = req.body;
+       const result = await usersCollection.insertOne(newUser);
+       console.log('Hitting the post' , req.body);
+       console.log('added use',result);
+       res.json(result);
+     });
+
+     //DELETE API
+     app.delete('/users/:id', async(req, res)=> {
+        const id = req.params.id;
+        const query = { _id: ObjectId(id) };
+        const result = await usersCollection.deleteOne(query);
+        console.log('deleting user with id ', result);
+        res.json(result);
+     })
+
+
     }
-]
+    finally {
+      // await client.close();
+    }
+  }
+  run().catch(console.dir);
 
-// GEt Method
-app.get('/users',(req, res)=>{
-    const search =req.query.search;
-   if(search){
-        const searchResult = users.filter(user => user.name.toLocaleLowerCase().includes(search));
-        res.send(searchResult);
-   }
-   else{
-       res.send(users)
-   }
+
+
+
+app.get('/', (req,res) => {
+    res.send('Running my CRUD Server');
 });
-
-// Post Method
-app.post('/users',(req,res)=>{
-    const newUser =req.body;
-    newUser.id = users.length;
-    users.push(newUser);
-    console.log('hitting the post',req.body)
-   // res.send(JSON.stringify(newUser))
-    res.json(newUser);
-})
-
-
-
-//Dynamic Api
-app.get('/users', (req,res)=> {
-    res.send(users)
-});
-
-app.get('/users/:id',(req,res) =>{
-    const id = req.params.id;
-    const user =users[id];
-    res.send(user);
-})
-
-app.get('/fruits',(req,res)=>{
-    res.send(['mango', 'Oranges', 'banna', 'apple'])
-})
 
 app.listen(port, () =>{
-    console.log('Listianing to port',port);
+    console.log('Running server on port', port)
 })
